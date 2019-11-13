@@ -11,7 +11,7 @@ namespace HetmanProblem
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            game.Solve();
+            game.Solve(9);
             
             stopwatch.Stop();
             Console.WriteLine("Execution time: " + stopwatch.ElapsedMilliseconds + "ms. ");
