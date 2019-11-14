@@ -1,0 +1,149 @@
+﻿
+import com.microsoft.azure.cognitiveservices.vision.computervision.*;
+import com.microsoft.azure.cognitiveservices.vision.computervision.models.*;
+
+import java.io.File;
+import java.nio.file.Files;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class ComputerVisionQuickstart {
+
+    public static void main(String[] args) {
+
+        String subscriptionKey = new String("ba663ba309684b6093ca4f96f543edd7");
+        String endpoint = new String("https://computervisionsb.cognitiveservices.azure.com/");
+        ComputerVisionClient compVisClient = ComputerVisionManager.authenticate(subscriptionKey).withEndpoint(endpoint);
+
+        System.out.println("\nAzure Cognitive Services Computer Vision - Java Quickstart Sample");
+
+        AnalyzeLocalImage(compVisClient);
+
+        RecognizeTextOCRLocal(compVisClient);
+    }
+
+    public static void AnalyzeLocalImage(ComputerVisionClient compVisClient) {
+        String pathToLocalImage = "<local image path>";
+
+        List<VisualFeatureTypes> featuresToExtractFromLocalImage = new ArrayList<>();
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.DESCRIPTION);
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.CATEGORIES);
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.TAGS);
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.FACES);
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.ADULT);
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.COLOR);
+        featuresToExtractFromLocalImage.add(VisualFeatureTypes.IMAGE_TYPE);
+
+        System.out.println("\nAnalyzing local image ...");
+
+        try {
+            File rawImage = new File(pathToLocalImage);
+            byte[] imageByteArray = Files.readAllBytes(rawImage.toPath());
+
+            ImageAnalysis analysis = compVisClient.computerVision().analyzeImageInStream().withImage(imageByteArray)
+                    .withVisualFeatures(featuresToExtractFromLocalImage).execute();
+
+            System.out.println("\nCaptions: ");
+            for (ImageCaption caption : analysis.description().captions()) {
+                System.out.printf("\'%s\' with confidence %f\n", caption.text(), caption.confidence());
+            }
+
+            System.out.println("\nCategories: ");
+            for (Category category : analysis.categories()) {
+                System.out.printf("\'%s\' with confidence %f\n", category.name(), category.score());
+            }
+            System.out.println("\nTags: ");
+            for (ImageTag tag : analysis.tags()) {
+                System.out.printf("\'%s\' with confidence %f\n", tag.name(), tag.confidence());
+            }
+            System.out.println("\nFaces: ");
+            for (FaceDescription face : analysis.faces()) {
+                System.out.printf("\'%s\' of age %d at location (%d, %d), (%d, %d)\n", face.gender(), face.age(),
+                        face.faceRectangle().left(), face.faceRectangle().top(),
+                        face.faceRectangle().left() + face.faceRectangle().width(),
+                        face.faceRectangle().top() + face.faceRectangle().height());
+            }
+            System.out.println("\nAdult: ");
+            System.out.printf("Is adult content: %b with confidence %f\n", analysis.adult().isAdultContent(),
+                    analysis.adult().adultScore());
+            System.out.printf("Has racy content: %b with confidence %f\n", analysis.adult().isRacyContent(),
+                    analysis.adult().racyScore());
+
+            System.out.println("\nColor scheme: ");
+            System.out.println("Is black and white: " + analysis.color().isBWImg());
+            System.out.println("Accent color: " + analysis.color().accentColor());
+            System.out.println("Dominant background color: " + analysis.color().dominantColorBackground());
+            System.out.println("Dominant foreground color: " + analysis.color().dominantColorForeground());
+            System.out.println("Dominant colors: " + String.join(", ", analysis.color().dominantColors()));
+
+            System.out.println("\nCelebrities: ");
+            for (Category category : analysis.categories()) {
+                if (category.detail() != null && category.detail().celebrities() != null) {
+                    for (CelebritiesModel celeb : category.detail().celebrities()) {
+                        System.out.printf("\'%s\' with confidence %f at location (%d, %d), (%d, %d)\n", celeb.name(),
+                                celeb.confidence(), celeb.faceRectangle().left(), celeb.faceRectangle().top(),
+                                celeb.faceRectangle().left() + celeb.faceRectangle().width(),
+                                celeb.faceRectangle().top() + celeb.faceRectangle().height());
+                    }
+                }
+            }
+            System.out.println("\nLandmarks: ");
+            for (Category category : analysis.categories()) {
+                if (category.detail() != null && category.detail().landmarks() != null) {
+                    for (LandmarksModel landmark : category.detail().landmarks()) {
+                        System.out.printf("\'%s\' with confidence %f\n", landmark.name(), landmark.confidence());
+                    }
+                }
+            }
+            System.out.println("\nImage type:");
+            System.out.println("Clip art type: " + analysis.imageType().clipArtType());
+            System.out.println("Line drawing type: " + analysis.imageType().lineDrawingType());
+        }
+
+        catch (Exception e) {
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    private static void RecognizeTextOCRLocal(ComputerVisionClient client) {
+        System.out.println("-----------------------------------------------");
+        System.out.println("RECOGNIZE PRINTED TEXT");
+
+        String localTextImagePath = "<local image path>";
+
+        try {
+            File rawImage = new File(localTextImagePath);
+            byte[] localImageBytes = Files.readAllBytes(rawImage.toPath());
+
+            OcrResult ocrResultLocal = client.computerVision().recognizePrintedTextInStream()
+                    .withDetectOrientation(true).withImage(localImageBytes).withLanguage(OcrLanguages.EN).execute();
+            System.out.println();
+            System.out.println("Recognizing printed text from a local image with OCR ...");
+            System.out.println("\nLanguage: " + ocrResultLocal.language());
+            System.out.printf("Text angle: %1.3f\n", ocrResultLocal.textAngle());
+            System.out.println("Orientation: " + ocrResultLocal.orientation());
+
+            boolean firstWord = true;
+            for (OcrRegion reg : ocrResultLocal.regions()) {
+                for (OcrLine line : reg.lines()) {
+                    for (OcrWord word : line.words()) {
+                        if (firstWord) {
+                            System.out.println("\nFirst word in first line is \"" + word.text()
+                                    + "\" with  bounding box: " + word.boundingBox());
+                            firstWord = false;
+                            System.out.println();
+                        }
+                        System.out.print(word.text() + " ");
+                    }
+                    System.out.println();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}

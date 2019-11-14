@@ -6,16 +6,21 @@ namespace HetmanProblem
 {
     internal partial class Game
     {
-        private const int BoardSize = 8;
-        private List<List<Point>> _solutions = new List<List<Point>>();
-        private readonly List<Quarter> _quarters;
+        private int _boardSize;
+        private List<Quarter> _quarters;
         private int _counter = 0;
 
-        internal List<List<Point>> Solutions { get => _solutions; set => _solutions = value; }
+        internal List<List<Point>> Solutions { get; set; } = new List<List<Point>>();
 
-        public Game()
+        public Game(int boardSize)
         {
-            _quarters = new List<Quarter>
+            _boardSize = boardSize;
+            _quarters = CreateQuarters();
+        }
+
+        private static List<Quarter> CreateQuarters()
+        {
+            return new List<Quarter>
             {
                 new Quarter(0, 0, 4, 4),
                 new Quarter(4, 0, 8, 4),
@@ -23,40 +28,54 @@ namespace HetmanProblem
                 new Quarter(4, 4, 8, 8)
             };
         }
+        private static List<Quarter> CreateColumnQuarters()
+        {
+            return new List<Quarter>
+            {
+                new Quarter( 0,0,  1, 8),
+                new Quarter( 1,  0,2, 8),
+                new Quarter( 2,  0,3, 8),
+                new Quarter( 3,  0,4, 8),
+                new Quarter( 4,  0,5, 8),
+                new Quarter(5,  0,6, 8),
+                new Quarter(6,  0,7, 8),
+                new Quarter( 7,  0,8, 8)
+            };
+        }
         private void RefineSolutions()
         {
             var solutionSet = new List<List<Point>>();
-            for (var i = 0; i < _solutions.Count; i++)
+            for (var i = 0; i < Solutions.Count; i++)
             {
                 var counter = 0;
-                for (var j = i + 1; j < _solutions.Count; j++)
+                for (var j = i + 1; j < Solutions.Count; j++)
                 {
                     counter = 0;
-                    for (var k = 0; k < 8; k++)
+                    for (var k = 0; k < _boardSize; k++)
                     {
-                        for (var l = 0; l < 8; l++)
+                        for (var l = 0; l < _boardSize; l++)
                         {
-                            if (_solutions[i][k].X == _solutions[j][l].X && _solutions[i][k].Y == _solutions[j][l].Y)
+                            if (Solutions[i][k].X == Solutions[j][l].X && Solutions[i][k].Y == Solutions[j][l].Y)
                             {
                                 counter++;
                                 break;
                             }
                         }
                     }
-                    if (counter == 8)
+                    if (counter == _boardSize)
                     {
                         break;
                     }
                 }
-                if (counter != 8)
+                if (counter != _boardSize)
                 {
-                    solutionSet.Add(_solutions[i]);
+                    solutionSet.Add(Solutions[i]);
                 }
             }
 
-            _solutions = solutionSet;
+            Solutions = solutionSet;
         }
-        private IEnumerable<int[]> GenerateQuarterArrays(int num)
+        private static IEnumerable<int[]> GenerateQuarterArrays(int num)
         {
             var rnd = new Random();
             int[] arr = { 0, 0, 1, 1, 2, 2, 3, 3 };
@@ -69,46 +88,47 @@ namespace HetmanProblem
             return quarters;
         }
 
-        private IEnumerable<int[]> GenerateQuarterPermutations()
+        public List<List<Point>> Solve2()
         {
-            int[] xx = { 0, 1, 2, 3, 4, 5, 6, 7 };
-            var arrays = GetPermutations(xx).ToList();
+            //_counter = 0;
 
-            foreach (var item in arrays)
-            {
-                for (var i = 0; i < item.Length; i++)
-                {
-                    item[i] = item[i] / 2;
-                }
-            }
-            return arrays;
+            //_quarters = CreateColumnQuarters();
+
+            var board = new BoardManager(_boardSize);
+            PlaceHetman2(board, 0, new Stack<Point>());
+
+            //RefineSolutions();
+            //RotateSolutions();
+            //RefineSolutions();
+
+            return Solutions;
         }
 
-        private static IEnumerable<T[]> GetPermutations<T>(T[] values)
+        public void PrintSolutions()
         {
-            if (values.Length == 1)
-                return new[] { values };
-
-            return values.SelectMany(v => GetPermutations(values.Except(new[] { v }).ToArray()),
-                (v, p) => new[] { v }.Concat(p).ToArray());
+            var board = new BoardManager(_boardSize);
+            Console.WriteLine("Found " + Solutions.Count + " solutions after rotation refinement");
+            foreach (var item in Solutions)
+            {
+                board.PrintBoardWithHetmans(item.ToList());
+            }
         }
         public List<List<Point>> Solve(int number, bool reset = false)
         {
             if (reset)
             {
-                _solutions = new List<List<Point>>();
+                Solutions = new List<List<Point>>();
             }
             _counter = 0;
             var arrays = GenerateQuarterArrays(number).ToList();
-            //var arrays = GenerateQuarterPermutations();
 
             var board = new BoardManager();
             foreach (var array in arrays)
             {
-                board = new BoardManager(BoardSize);
-                PlaceHetman(board, 0, 0, new Stack<Point>(), array);
-                board = new BoardManager(BoardSize);
-                PlaceHetmanReverse(board, 0, 0, new Stack<Point>(), array);
+                board = new BoardManager(_boardSize);
+                PlaceHetman(board, 0, new Stack<Point>(), array);
+                board = new BoardManager(_boardSize);
+                PlaceHetmanReverse(board, 0, new Stack<Point>(), array);
             }
 
             //Console.WriteLine("Single hetman placements: " + _counter);
@@ -124,17 +144,51 @@ namespace HetmanProblem
             //{
             //    board.PrintBoardWithHetmans(item.ToList());
             //}
-            return _solutions;
+            return Solutions;
         }
 
-        private void PlaceHetman(BoardManager board, int quarter, int depth, Stack<Point> currentHetmans, int[] quarterArray)
+        private bool PlaceHetman2(BoardManager board, int depth, Stack<Point> currentHetmans)
+        {
+            if (depth == _boardSize)
+            {
+                var solution = currentHetmans.ToList();
+                Solutions.Add(solution);
+                return true;
+            }
+
+            var boardCopy = new bool[_boardSize, _boardSize];
+
+            Array.Copy(board.Board, 0, boardCopy, 0, board.Board.Length);
+            var tempBoard = new BoardManager(boardCopy);
+            for (var i = depth == 0 ? 1 : 0; i < _boardSize; i++)
+            {
+                if (board.IsOccupied(i, depth))
+                    continue;
+
+                board.FillOccupiedPlaces(i, depth);
+
+                _counter++;
+                currentHetmans.Push(new Point { X = i, Y = depth });
+
+                if (PlaceHetman2(board, depth + 1, currentHetmans)) return true;
+
+                currentHetmans.Pop();
+
+                // board.PrintBoardWithHetmans(currentHetmans.ToList());
+
+                Array.Copy(tempBoard.Board, 0, board.Board, 0, tempBoard.Board.Length);
+            }
+
+            return false;
+        }
+        private void PlaceHetman(BoardManager board, int depth, Stack<Point> currentHetmans, IReadOnlyList<int> quarterArray)
         {
             if (depth == 8)
             {
                 var solution = currentHetmans.ToList();
-                _solutions.Add(solution);
+                Solutions.Add(solution);
                 return;
-            };
+            }
 
             Quarter currentQuarter = _quarters[quarterArray[depth]];
             var boardCopy = new bool[8, 8];
@@ -149,10 +203,15 @@ namespace HetmanProblem
                         continue;
 
                     board.FillOccupiedPlaces(j, i);
+
                     _counter++;
                     currentHetmans.Push(new Point { X = j, Y = i });
 
-                    PlaceHetman(board, (quarter + 1), depth + 1, currentHetmans, quarterArray);
+                    board.PrintBoardWithHetmans(currentHetmans.ToList());
+
+                    Console.ReadKey();
+
+                    PlaceHetman(board, depth + 1, currentHetmans, quarterArray);
 
                     currentHetmans.Pop();
                     board.Board = tempBoard.Board;
@@ -160,12 +219,12 @@ namespace HetmanProblem
             }
 
         }
-        private void PlaceHetmanReverse(BoardManager board, int quarter, int depth, Stack<Point> currentHetmans, int[] quarterArray)
+        private void PlaceHetmanReverse(BoardManager board, int depth, Stack<Point> currentHetmans, IReadOnlyList<int> quarterArray)
         {
             if (depth == 8)
             {
                 var solution = currentHetmans.ToList();
-                _solutions.Add(solution);
+                Solutions.Add(solution);
                 return;
             };
 
@@ -185,7 +244,7 @@ namespace HetmanProblem
                     _counter++;
                     currentHetmans.Push(new Point { X = j, Y = i });
 
-                    PlaceHetman(board, (quarter + 1), depth + 1, currentHetmans, quarterArray);
+                    PlaceHetman(board, depth + 1, currentHetmans, quarterArray);
 
                     currentHetmans.Pop();
                     board.Board = tempBoard.Board;
@@ -195,7 +254,7 @@ namespace HetmanProblem
         private void RotateSolutions()
         {
             var newSolutions = new List<List<Point>>();
-            foreach (var item in _solutions)
+            foreach (var item in Solutions)
             {
                 var a = RotatePoints(item);
                 var b = RotatePoints(a);
@@ -206,17 +265,11 @@ namespace HetmanProblem
                 newSolutions.Add(c);
             }
 
-            _solutions = newSolutions;
+            Solutions = newSolutions;
         }
-        private List<Point> RotatePoints(List<Point> hetmanPositions)
+        private List<Point> RotatePoints(IEnumerable<Point> hetmanPositions)
         {
-            var result = new List<Point>();
-            foreach (var item in hetmanPositions)
-            {
-                result.Add(new Point { X = 7 - item.Y, Y = item.X });
-            }
-
-            return result;
+            return hetmanPositions.Select(item => new Point { X = _boardSize - item.Y, Y = item.X }).ToList();
         }
     }
 }

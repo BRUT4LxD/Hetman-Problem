@@ -6,16 +6,19 @@ namespace HetmanProblem
     internal struct BoardManager
     {
         public bool[,] Board { get; set; }
+        private int _boardSize;
 
         public BoardManager(int boardSize)
         {
             Board = new bool[boardSize, boardSize];
+            _boardSize = boardSize;
             InitBoard();
         }
 
         public BoardManager(bool[,] board)
         {
             Board = board;
+            _boardSize = board.Length;
         }
         private void InitBoard()
         {
@@ -43,7 +46,7 @@ namespace HetmanProblem
         private void FillVertical(int x, int y)
         {
             var currentX = x;
-            while (++currentX < 8)
+            while (++currentX < _boardSize)
             {
                 Board[y, currentX] = true;
             }
@@ -60,7 +63,7 @@ namespace HetmanProblem
         private void FillHorizontal(int x, int y)
         {
             var currentY = y;
-            while (++currentY < 8)
+            while (++currentY < _boardSize)
             {
                 Board[currentY, x] = true;
             }
@@ -78,7 +81,7 @@ namespace HetmanProblem
         {
             var currentY = y;
             var currentX = x;
-            while (++currentY < 8 && ++currentX < 8)
+            while (++currentY < _boardSize && ++currentX < _boardSize)
             {
                 Board[currentY, currentX] = true;
             }
@@ -96,14 +99,14 @@ namespace HetmanProblem
         {
             var currentY = y;
             var currentX = x;
-            while (--currentY >= 0 && ++currentX < 8)
+            while (--currentY >= 0 && ++currentX < _boardSize)
             {
                 Board[currentY, currentX] = true;
             }
 
             currentY = y;
             currentX = x;
-            while (++currentY < 8 && --currentX >= 0)
+            while (++currentY < _boardSize && --currentX >= 0)
             {
                 Board[currentY, currentX] = true;
             }
