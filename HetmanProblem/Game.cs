@@ -58,6 +58,7 @@ namespace HetmanProblem
         public void PrintSolutions()
         {
             var board = new BoardManager(_boardSize);
+            Console.WriteLine("Found " + Solutions.Count + " solutions");
             foreach (var item in Solutions)
             {
                 board.PrintBoardWithHetmans(item.ToList());
