@@ -6,7 +6,7 @@ namespace HetmanProblem
 {
     internal partial class Game
     {
-        private int _boardSize;
+        private readonly int _boardSize;
 
         internal List<List<Point>> Solutions { get; set; } = new List<List<Point>>();
 
@@ -58,7 +58,6 @@ namespace HetmanProblem
         public void PrintSolutions()
         {
             var board = new BoardManager(_boardSize);
-            Console.WriteLine("Found " + Solutions.Count + " solutions after rotation refinement");
             foreach (var item in Solutions)
             {
                 board.PrintBoardWithHetmans(item.ToList());
